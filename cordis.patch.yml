@@ -1,0 +1,8 @@
+# dsh-model-usage bundle patch: registers the 模型用量 (model usage)
+# plugin into the web profile roster. The Host half ships in this
+# package's lib/index.js (llm/stream collection + /api/model-usage routes);
+# the browser half (settings.section entry) is driven by the profile's
+# dsh.profile.bundles list via the dsh.client declaration above.
+- insert:
+    - id: model-usage
+      name: 'dsh-model-usage'

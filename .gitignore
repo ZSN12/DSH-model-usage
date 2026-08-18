@@ -1,0 +1,42 @@
+# Build output
+lib/
+
+# Dependencies
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage / diagnostics
+coverage
+*.lcov
+.nyc_output
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Package / pack output
+*.tgz
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# dotenv
+.env
+.env.*
+!.env.example

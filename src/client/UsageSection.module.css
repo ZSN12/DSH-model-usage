@@ -1,0 +1,325 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── 顶部统计栏:5 个指标横向一行(grid 强制) ── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.08));
+  border-radius: 14px;
+  background: var(--dsh-surface, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+.stat {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 15px 8px 14px;
+  text-align: center;
+}
+.stat + .stat { border-left: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.08)); }
+.statLabel {
+  font-size: 11px;
+  color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.52));
+  white-space: nowrap;
+}
+.statVal {
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsh-text, inherit);
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .stats { grid-template-columns: repeat(5, minmax(96px, 1fr)); overflow-x: auto; }
+}
+
+/* ── 面板 ── */
+.panel {
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.07));
+  border-radius: 14px;
+  background: var(--dsh-surface, #fff);
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.panelHead h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dsh-text, inherit);
+}
+.dotBlue, .dotGreen {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dotBlue { background: #4f8cff; }
+.dotGreen { background: #34c07c; }
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sel {
+  background: var(--dsh-surface, #fff);
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.14));
+  color: var(--dsh-text, inherit);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/* ── 自定义模型筛选下拉 ── */
+.dropdown { position: relative; display: inline-block; }
+.dropBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--dsh-surface, #fff);
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.16));
+  color: var(--dsh-text, inherit);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.dropBtn:hover { border-color: rgba(79, 140, 255, 0.5); }
+.dropBtn.open { border-color: #4f8cff; box-shadow: 0 0 0 2px rgba(79, 140, 255, 0.18); }
+.dropMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  background: var(--dsh-surface, #fff);
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 30;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.dropItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--dsh-text, inherit);
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+.dropItem:hover { background: var(--dsh-bg-muted, rgba(0, 0, 0, 0.05)); }
+.dropItem.picked { background: rgba(79, 140, 255, 0.14); color: #2f6be0; font-weight: 600; }
+.dropText { overflow: hidden; text-overflow: ellipsis; }
+.dropCheck { color: #2f6be0; font-size: 12px; flex-shrink: 0; }
+.btn {
+  background: var(--dsh-surface, #fff);
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.14));
+  color: var(--dsh-text, inherit);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn.on { border-color: rgba(52, 192, 124, 0.5); color: #1f9d63; }
+.auto { display: inline-flex; align-items: center; gap: 6px; }
+.pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34c07c;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+/* ── 热力图 ── */
+.heatWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.heat {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks, 13), 1fr);
+  gap: 3px;
+  min-width: 100%;
+  align-items: center;
+  margin-top: 4px;
+}
+/* 底部月份标签行(无星期的热力图) */
+/* 与 .heat 共用同一套 grid 模板(gap 3px + repeat(weeks, 1fr)),
+   保证月份标签的列边界和格子列边界严格对齐。 */
+.monthBar {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks, 13), 1fr);
+  gap: 3px;
+  margin-top: 4px;
+}
+.monthBand {
+  font-size: 10px;
+  color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.55));
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 1px;
+}
+.cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  min-width: 0;
+}
+
+/* ── tooltip ── */
+.tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: rgba(20, 20, 22, 0.94);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* ── KPI 卡 ── */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.08));
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--dsh-surface, #fff);
+  min-width: 0;
+  overflow: hidden;
+}
+.kpiL { font-size: 10.5px; color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.55)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.kpiV {
+  font-size: 15px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.kpiD { font-size: 9.5px; color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.45)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* ── 缓存命中率 ── */
+.rateWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.06));
+  border-radius: 10px;
+  background: var(--dsh-bg-muted, rgba(0, 0, 0, 0.02));
+}
+.rateRow { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.rateL { font-size: 12px; color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.6)); }
+.rateV { font-weight: 750; font-variant-numeric: tabular-nums; font-size: 13px; }
+.rateBar {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--dsh-bg-muted, rgba(0, 0, 0, 0.08));
+  overflow: hidden;
+}
+.rateFill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #34c07c, #1f9d63);
+  transition: width 0.4s ease;
+}
+
+/* ── 模型列表 ── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--dsh-border, rgba(0, 0, 0, 0.07));
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: var(--dsh-surface, #fff);
+  transition: border-color 0.15s ease;
+}
+.row:hover { border-color: var(--dsh-border, rgba(0, 0, 0, 0.16)); }
+.nm { flex: 1; min-width: 0; }
+.nm > div:first-child { font-weight: 650; font-size: 13.5px; }
+.pv { font-size: 11px; color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.5)); }
+.nums {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 58px;
+}
+.num b { font-size: 14px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.num span { font-size: 10px; color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.45)); }
+
+.empty {
+  text-align: center;
+  color: var(--dsh-text-secondary, rgba(0, 0, 0, 0.5));
+  padding: 26px 0;
+  font-size: 13px;
+}
+.errSub { margin-top: 6px; font-size: 12px; color: rgba(220, 60, 60, 0.8); }
