@@ -20,6 +20,7 @@
 - **🤖 模型列表**：按 `provider/model` 聚合，显示总 token、调用、输入、输出、推理
 - **🔄 5s 自动刷新** + 手动刷新 + 模型筛选下拉
 - **💾 本地持久化**：每次调用 append 写入 `~/.dsh/storages/model-usage.jsonl`，重启不丢
+<img width="2528" height="1748" alt="7b2d7510411fc14b0bf8cb1fb4b02cc8" src="https://github.com/user-attachments/assets/ed9b93a9-2514-4dfb-9568-cfd9bc666531" />
 
 ## 📦 安装
 
