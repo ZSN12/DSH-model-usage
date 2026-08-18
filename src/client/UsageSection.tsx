@@ -15,8 +15,11 @@ export interface UsageSectionProps {
   close?: () => void
 }
 
-/** 四级热力色阶:浅灰 → 浅蓝 → 蓝 → 深蓝(Codex 风格)。 */
-const CELL = ['#ebedf0', '#c6e3ff', '#8fc5ff', '#4f8cff', '#1f5fcf']
+/**
+ * 热力等级 → CSS 类:色值在 UsageSection.module.css 里按
+ * body[data-ds-dark-theme] 提供深色分支,浅/深主题自动切换。
+ */
+const cellClass = (level: number): string => 'cell' + level
 
 /** 将整数缩写为中文习惯(3.7亿 / 4164.4万)。 */
 function fc(n: number | null | undefined): string {
@@ -143,8 +146,6 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   }
   const hideTip = (): void => setTip(null)
 
-  const cellColor = (cell: { t: number; future: boolean }): string => cell.future ? 'transparent' : CELL[lvl(cell.t, maxDay)]!
-
   return (
     <div className={styles.root}>
       {/* ── 顶部统计栏:5 个指标横向排列 ── */}
@@ -179,11 +180,10 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
                   return (
                     <div
                       key={cell.key}
-                      className={styles.cell}
+                      className={styles.cell + ' ' + (cell.future ? styles.cellFuture : styles[cellClass(lvl(cell.t, maxDay))])}
                       onMouseEnter={showTip(`${cell.label} 使用了 ${fc(cell.t)} 个 Token`)}
                       onMouseMove={moveTip}
                       onMouseLeave={hideTip}
-                      style={{ background: cellColor(cell) }}
                     />
                   )
                 })}
