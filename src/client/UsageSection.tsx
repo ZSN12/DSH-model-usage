@@ -99,7 +99,8 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      // 统计/列表是全量历史;days 仅作热力图窗口参考(host 已忽略)。
+      // days 作为时间范围传给 host:作用于用量明细(KPI/列表/每日),顶部统计全量。
+      // zoom=0 表示"全部"。
       const q = new URLSearchParams({ days: String(zoom), model })
       const res = await fetch(`/api/model-usage?${q}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -131,14 +132,18 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   }
   if (!report) return <div className={styles.empty}>加载中…</div>
 
+  // 顶部统计栏:全量历史;用量明细(KPI/列表):窗口内(days)。
+  const ov = report.overview
   const sum = report.summary
   // 先去重合并同源同名(如 workbuddy/deepseek-v4-flash ≡ deepseek-v4-flash),再分组
   const rows = mergeRows(report.rows)
   const daily = report.daily
 
   // ── 热力图:7 行 × N 列(列 = 周,与 GitHub/Codex 一致) ──
+  // zoom=0(全部)时热力图回退到近 1 年展示,明细仍为全量。
+  const heatDays = zoom > 0 ? zoom : 365
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  const weeks = Math.ceil((zoom + today.getDay()) / 7)
+  const weeks = Math.ceil((heatDays + today.getDay()) / 7)
   const start = new Date(today)
   start.setDate(start.getDate() - (weeks * 7 - 1 - today.getDay()))
   const cells: { key: string; t: number; future: boolean; label: string; col: number; row: number }[] = []
@@ -202,13 +207,13 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
 
   return (
     <div className={styles.root}>
-      {/* ── 顶部统计栏:5 个指标横向排列 ── */}
+      {/* ── 顶部统计栏:5 个指标横向排列(全量历史) ── */}
       <div className={styles.stats}>
-        <StatCard label="累计 Token 数" value={fc(sum.totalTokens)} />
-        <StatCard label="峰值 Token 数" value={fc(sum.peakTokens)} />
-        <StatCard label="最长聊天时长" value={fdur(sum.maxDur)} />
-        <StatCard label="当前连续天数" value={sum.currentStreak != null ? `${sum.currentStreak} 天` : '—'} />
-        <StatCard label="最长连续天数" value={sum.maxStreak != null ? `${sum.maxStreak} 天` : '—'} />
+        <StatCard label="累计 Token 数" value={fc(ov.totalTokens)} />
+        <StatCard label="峰值 Token 数" value={fc(ov.peakTokens)} />
+        <StatCard label="最长聊天时长" value={fdur(ov.maxDur)} />
+        <StatCard label="当前连续天数" value={ov.currentStreak != null ? `${ov.currentStreak} 天` : '—'} />
+        <StatCard label="最长连续天数" value={ov.maxStreak != null ? `${ov.maxStreak} 天` : '—'} />
       </div>
 
       {/* ── Token 活动 ── */}
@@ -216,7 +221,13 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
         <div className={styles.panelHead}>
           <h3><span className={styles.dotBlue} />Token 活动</h3>
           <div className={styles.tools}>
-            <select className={styles.sel} value={zoom} onChange={(e) => setZoom(Number(e.target.value))}>
+            <select
+              className={styles.sel}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              title="选择时间范围,影响热力图与用量明细"
+            >
+              <option value={0}>全部</option>
               <option value={30}>近 30 天</option>
               <option value={90}>近 90 天</option>
               <option value={182}>近 6 个月</option>

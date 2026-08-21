@@ -175,18 +175,22 @@ export function apply(ctx: Context): void {
 
   function buildReport(query: Record<string, string>): UsageReport {
     const modelFilter = query.model ? String(query.model) : ''
-    // 统计/每日数据基于全部历史(不受时间范围影响);时间窗口(近30/90天、6个月、1年)
-    // 只由浏览器端按需截取热力图显示范围。
-    void query.days
-    // 模型筛选只影响汇总统计;模型列表 rows 永远返回全部模型,
-    // 否则前端筛选下拉在选中一项后会丢失其他选项。
-    const all = aggregate(calls)
-    const rows = [...all.per.values()].sort((a, b) => b.lastAt - a.lastAt)
-    const list = modelFilter ? calls.filter((c) => (c.provider + '/' + c.model) === modelFilter) : calls
-    const { daily } = modelFilter ? aggregate(list) : all
-    // totals 基于当前筛选(list),与 KPI 卡一致;rows 保持全量供下拉使用。
-    const listAgg = aggregate(list).per
-    const totals = [...listAgg.values()].reduce((acc, r) => {
+    // 时间窗口(近30/90天、6个月、1年):作用于用量明细(明细 KPI、模型列表、
+    // 每日数据),与热力图一致;顶部统计栏 overview 始终为全量历史。
+    const daysRaw = Number(query.days)
+    const days = Number.isFinite(daysRaw) && daysRaw > 0 ? daysRaw : 0
+    const cutoff = days > 0 ? Date.now() - days * 86_400_000 : 0
+
+    // 全量历史(受模型筛选影响,不受时间窗口影响)——顶部统计栏。
+    const fullList = modelFilter ? calls.filter((c) => (c.provider + '/' + c.model) === modelFilter) : calls
+    // 窗口内(同时受模型筛选与时间窗口影响)——用量明细面板。
+    const list = cutoff > 0 ? fullList.filter((c) => c.ts >= cutoff) : fullList
+
+    const agg = aggregate(list)
+    const rows = [...agg.per.values()].sort((a, b) => b.lastAt - a.lastAt)
+    const daily = agg.daily
+
+    const totals = [...agg.per.values()].reduce((acc, r) => {
       acc.calls += r.calls
       acc.inputTokens += r.inputTokens
       acc.outputTokens += r.outputTokens
@@ -208,10 +212,30 @@ export function apply(ctx: Context): void {
     }, 0)
     const billedIn = totals.inputTokens + totals.cacheReadTokens + totals.cacheWriteTokens
     const cacheHitRate = billedIn + totals.outputTokens > 0 ? totals.cacheReadTokens / (billedIn + totals.outputTokens) : 0
+
+    // 顶部统计栏:全量历史(模型筛选仍生效,时间窗口不生效)
+    const fullAgg = aggregate(fullList)
+    const fullTotals = [...fullAgg.per.values()].reduce((acc, r) => {
+      acc.inputTokens += r.inputTokens
+      acc.outputTokens += r.outputTokens
+      acc.cacheReadTokens += r.cacheReadTokens
+      acc.cacheWriteTokens += r.cacheWriteTokens
+      return acc
+    }, { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 })
+    const fullStreak = streaks(fullList)
+    const overview = {
+      totalTokens: fullTotals.inputTokens + fullTotals.outputTokens + fullTotals.cacheReadTokens + fullTotals.cacheWriteTokens,
+      peakTokens: fullList.reduce((m, c) => Math.max(m, c.inp + c.out + c.cr + c.cw), 0),
+      maxDur: fullList.reduce((m, c) => Math.max(m, c.dur), 0),
+      currentStreak: fullStreak.currentStreak,
+      maxStreak: fullStreak.maxStreak,
+    }
+
     return {
       rows,
       totals,
       daily,
+      overview,
       summary: {
         totalTokens,
         peakTokens,

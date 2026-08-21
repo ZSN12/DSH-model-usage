@@ -109,6 +109,19 @@ export interface UsageReport {
     reasoningTokens: number
   }
   daily: DailyMap
+  /**
+   * 顶部统计栏:全量历史(不受时间范围 days 影响;受模型筛选影响)。
+   */
+  overview: {
+    totalTokens: number
+    peakTokens: number
+    maxDur: number
+    currentStreak: number
+    maxStreak: number
+  }
+  /**
+   * 用量明细面板:按所选时间范围(days)与模型筛选计算,与热力图/模型列表一致。
+   */
   summary: {
     totalTokens: number
     peakTokens: number
