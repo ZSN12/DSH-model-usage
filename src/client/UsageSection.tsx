@@ -87,11 +87,53 @@ function mergeRows(rows: ModelRow[]): ModelRow[] {
   return order.map((k) => map.get(k)!)
 }
 
+/** 时间范围:start/end 为毫秒时间戳,null 表示不限(端点开放)。 */
+export interface TimeRange {
+  start: number | null
+  end: number | null
+  /** 界面显示标签,如"近 6 个月" / "自定义"。 */
+  label: string
+  /** 热力图展示天数(预设定值或按自定义范围估算)。 */
+  days: number
+}
+
+const DAY = 86_400_000
+
+/** 预置档:全部 / 当天 / 1d / 7d / 14d / 30d / 90d / 6个月 / 1年。 */
+const PRESETS: { key: string; label: string; make: (now: number) => TimeRange }[] = [
+  { key: 'all', label: '全部', make: () => ({ start: null, end: null, label: '全部', days: 365 }) },
+  {
+    key: 'today', label: '当天',
+    make: (now) => {
+      const d = new Date(now); d.setHours(0, 0, 0, 0)
+      return { start: d.getTime(), end: null, label: '当天', days: 7 }
+    },
+  },
+  { key: '1d', label: '1d', make: (now) => ({ start: now - DAY, end: null, label: '近 1 天', days: 7 }) },
+  { key: '7d', label: '7d', make: (now) => ({ start: now - 7 * DAY, end: null, label: '近 7 天', days: 7 }) },
+  { key: '14d', label: '14d', make: (now) => ({ start: now - 14 * DAY, end: null, label: '近 14 天', days: 14 }) },
+  { key: '30d', label: '30d', make: (now) => ({ start: now - 30 * DAY, end: null, label: '近 30 天', days: 30 }) },
+  { key: '90d', label: '90d', make: (now) => ({ start: now - 90 * DAY, end: null, label: '近 90 天', days: 90 }) },
+  { key: '6m', label: '6 个月', make: (now) => ({ start: now - 182 * DAY, end: null, label: '近 6 个月', days: 182 }) },
+  { key: '1y', label: '1 年', make: (now) => ({ start: now - 365 * DAY, end: null, label: '近 1 年', days: 365 }) },
+]
+
+/** 判断两个时间范围是否等价(用于选中态高亮)。 */
+function sameRange(a: TimeRange, b: TimeRange): boolean {
+  return a.start === b.start && a.end === b.end
+}
+
+/** 自定义范围构造(跟随当前时刻时 end 置 null)。 */
+function customRange(startMs: number, endMs: number | null): TimeRange {
+  const days = Math.max(7, Math.round(((endMs ?? Date.now()) - startMs) / DAY))
+  return { start: startMs, end: endMs, label: '自定义', days }
+}
+
 export function UsageSection(_props: UsageSectionProps): ReactNode {
   const [report, setReport] = useState<UsageReport | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [model, setModel] = useState('')
-  const [zoom, setZoom] = useState(182)
+  const [range, setRange] = useState<TimeRange>(() => PRESETS.find((p) => p.key === '6m')!.make(Date.now()))
   const [auto, setAuto] = useState(true)
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null)
   const [rev, setRev] = useState(0)
@@ -99,9 +141,10 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      // days 作为时间范围传给 host:作用于用量明细(KPI/列表/每日),顶部统计全量。
-      // zoom=0 表示"全部"。
-      const q = new URLSearchParams({ days: String(zoom), model })
+      // start/end 作为时间范围传给 host:作用于用量明细(KPI/列表/每日),顶部统计全量。
+      const q = new URLSearchParams({ model })
+      if (range.start != null) q.set('start', String(range.start))
+      if (range.end != null) q.set('end', String(range.end))
       const res = await fetch(`/api/model-usage?${q}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as UsageReport
@@ -110,7 +153,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
     } catch (error) {
       setErr(String(error instanceof Error ? error.message : error))
     }
-  }, [zoom, model])
+  }, [range, model])
 
   useEffect(() => { void load() }, [load])
   useEffect(() => {
@@ -140,8 +183,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   const daily = report.daily
 
   // ── 热力图:7 行 × N 列(列 = 周,与 GitHub/Codex 一致) ──
-  // zoom=0(全部)时热力图回退到近 1 年展示,明细仍为全量。
-  const heatDays = zoom > 0 ? zoom : 365
+  const heatDays = Math.max(7, range.days)
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const weeks = Math.ceil((heatDays + today.getDay()) / 7)
   const start = new Date(today)
@@ -221,18 +263,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
         <div className={styles.panelHead}>
           <h3><span className={styles.dotBlue} />Token 活动</h3>
           <div className={styles.tools}>
-            <select
-              className={styles.sel}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              title="选择时间范围,影响热力图与用量明细"
-            >
-              <option value={0}>全部</option>
-              <option value={30}>近 30 天</option>
-              <option value={90}>近 90 天</option>
-              <option value={182}>近 6 个月</option>
-              <option value={365}>近 1 年</option>
-            </select>
+            <TimeRangePicker value={range} onChange={setRange} />
           </div>
         </div>
 
@@ -433,6 +464,128 @@ function ModelSelect(props: {
               </button>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** ms → datetime-local 输入值(YYYY-MM-DDTHH:mm)。 */
+function toLocalInput(ms: number): string {
+  const d = new Date(ms)
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** datetime-local 输入值 → ms;非法输入返回 null。 */
+function fromLocalInput(s: string): number | null {
+  if (!s) return null
+  const t = new Date(s).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
+/** ccswitch 风格时间范围选择器:预置档 + 自定义起止时间 + 结束跟随当前。 */
+function TimeRangePicker(props: {
+  value: TimeRange
+  onChange: (r: TimeRange) => void
+}): ReactNode {
+  const { value, onChange } = props
+  const [open, setOpen] = useState(false)
+  const [customStart, setCustomStart] = useState(() => toLocalInput(value.start ?? Date.now() - DAY))
+  const [customEnd, setCustomEnd] = useState(() => toLocalInput(value.end ?? Date.now()))
+  const [followNow, setFollowNow] = useState(value.end == null && value.start != null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent): void => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const applyPreset = (p: (typeof PRESETS)[number]): void => {
+    onChange(p.make(Date.now()))
+    setOpen(false)
+  }
+  const applyCustom = (): void => {
+    const start = fromLocalInput(customStart)
+    if (start == null) return
+    const end = followNow ? null : fromLocalInput(customEnd)
+    onChange(customRange(start, end))
+    setOpen(false)
+  }
+
+  return (
+    <div className={styles.dropdown} ref={rootRef}>
+      <button
+        type="button"
+        className={styles.dropBtn + (open ? ' ' + styles.open : '')}
+        onClick={() => {
+          // 每次打开时用当前值初始化自定义草稿
+          setCustomStart(toLocalInput(value.start ?? Date.now() - DAY))
+          setCustomEnd(toLocalInput(value.end ?? Date.now()))
+          setFollowNow(value.end == null && value.start != null)
+          setOpen(!open)
+        }}
+      >
+        {value.label}
+        <span className={styles.dropChevron}>▾</span>
+      </button>
+      {open && (
+        <div className={styles.rangeMenu}>
+          <div className={styles.rangePresets}>
+            {PRESETS.map((p) => {
+              const r = p.make(Date.now())
+              const picked = sameRange(value, r)
+              return (
+                <button
+                  type="button"
+                  key={p.key}
+                  className={styles.chip + (picked ? ' ' + styles.chipOn : '')}
+                  onClick={() => applyPreset(p)}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
+          <div className={styles.rangeDivider} />
+          <div className={styles.rangeCustom}>
+            <div className={styles.rangeHint}>支持日期与时间</div>
+            <label className={styles.rangeField}>
+              <span>开始时间</span>
+              <input
+                className={styles.sel}
+                type="datetime-local"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+              />
+            </label>
+            <label className={styles.rangeField}>
+              <span>结束时间</span>
+              <input
+                className={styles.sel}
+                type="datetime-local"
+                value={customEnd}
+                disabled={followNow}
+                onChange={(e) => setCustomEnd(e.target.value)}
+              />
+            </label>
+            <label className={styles.rangeCheck}>
+              <input
+                type="checkbox"
+                checked={followNow}
+                onChange={(e) => setFollowNow(e.target.checked)}
+              />
+              结束时间跟随当前时刻
+            </label>
+            <div className={styles.rangeActions}>
+              <button type="button" className={styles.btn} onClick={() => setOpen(false)}>取消</button>
+              <button type="button" className={styles.btnPrimary} onClick={applyCustom}>确定</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

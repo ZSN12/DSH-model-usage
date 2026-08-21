@@ -176,6 +176,78 @@
   50% { opacity: 0.35; transform: scale(0.8); }
 }
 
+/* ── 时间范围选择器(ccswitch 风格弹窗) ── */
+.dropChevron { font-size: 10px; color: var(--dsw-alias-label-tertiary); flex-shrink: 0; }
+.rangeMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 320px;
+  background: var(--dsw-alias-bg-overlay);
+  border: 1px solid var(--dsw-alias-border-l3);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  padding: 12px;
+  z-index: 40;
+}
+.rangePresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  border: 1px solid var(--dsw-alias-border-l3);
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.chip:hover { border-color: var(--dsw-static-deepseek-450); background: var(--dsw-alias-interactive-bg-hover); }
+.chipOn {
+  border-color: var(--dsw-static-deepseek-500);
+  background: var(--dsw-alias-interactive-bg-hover-accent);
+  color: var(--dsw-static-deepseek-500);
+  font-weight: 600;
+}
+.rangeDivider {
+  height: 1px;
+  margin: 12px 0;
+  background: var(--dsw-alias-border-l2);
+}
+.rangeCustom { display: flex; flex-direction: column; gap: 8px; }
+.rangeHint { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
+.rangeField { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rangeField > span { font-size: 12px; color: var(--dsw-alias-label-secondary); flex-shrink: 0; }
+.rangeField input {
+  flex: 1;
+  min-width: 0;
+  color-scheme: light dark;
+}
+.rangeCheck {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.rangeCheck input { accent-color: var(--dsw-static-deepseek-500); }
+.rangeActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.btnPrimary {
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btnPrimary:hover { background: var(--dsw-alias-button-primary-hover); }
+
 /* ── 热力图 ── */
 .heatWrap {
   display: flex;

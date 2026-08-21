@@ -175,16 +175,26 @@ export function apply(ctx: Context): void {
 
   function buildReport(query: Record<string, string>): UsageReport {
     const modelFilter = query.model ? String(query.model) : ''
-    // 时间窗口(近30/90天、6个月、1年):作用于用量明细(明细 KPI、模型列表、
-    // 每日数据),与热力图一致;顶部统计栏 overview 始终为全量历史。
+    // 时间窗口:优先绝对起止 start/end(毫秒时间戳,来自前端时间选择器);
+    // 否则回退相对 days(近30/90天、6个月、1年)。作用于用量明细(明细 KPI、
+    // 模型列表、每日数据),与热力图一致;顶部统计栏 overview 始终为全量历史。
+    const startRaw = Number(query.start)
+    const endRaw = Number(query.end)
+    const hasStart = Number.isFinite(startRaw) && startRaw > 0
+    const hasEnd = Number.isFinite(endRaw) && endRaw > 0
     const daysRaw = Number(query.days)
     const days = Number.isFinite(daysRaw) && daysRaw > 0 ? daysRaw : 0
-    const cutoff = days > 0 ? Date.now() - days * 86_400_000 : 0
 
     // 全量历史(受模型筛选影响,不受时间窗口影响)——顶部统计栏。
     const fullList = modelFilter ? calls.filter((c) => (c.provider + '/' + c.model) === modelFilter) : calls
     // 窗口内(同时受模型筛选与时间窗口影响)——用量明细面板。
-    const list = cutoff > 0 ? fullList.filter((c) => c.ts >= cutoff) : fullList
+    let list = fullList
+    if (hasStart || hasEnd) {
+      list = fullList.filter((c) => (hasStart ? c.ts >= startRaw : true) && (hasEnd ? c.ts <= endRaw : true))
+    } else if (days > 0) {
+      const cutoff = Date.now() - days * 86_400_000
+      list = fullList.filter((c) => c.ts >= cutoff)
+    }
 
     const agg = aggregate(list)
     const rows = [...agg.per.values()].sort((a, b) => b.lastAt - a.lastAt)
