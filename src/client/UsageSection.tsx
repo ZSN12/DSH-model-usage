@@ -193,8 +193,9 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
     currentStreak: sum.currentStreak,
     maxStreak: sum.maxStreak,
   }
-  // 先去重合并同源同名(如 workbuddy/deepseek-v4-flash ≡ deepseek-v4-flash),再分组
-  const rows = mergeRows(report.rows)
+  // 先去重合并同源同名(如 workbuddy/deepseek-v4-flash ≡ deepseek-v4-flash),再分组。
+  // 过滤掉没有任何输入/输出/缓存 token 的模型(如 0 token 的调用,不影响展示)。
+  const rows = mergeRows(report.rows).filter((r) => r.totalTokens > 0)
   const daily = report.daily
 
   // ── 热力图:7 行 × N 列(列 = 周,与 GitHub/Codex 一致) ──
