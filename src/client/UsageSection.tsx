@@ -259,9 +259,13 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
     g.calls += r.calls
   }
   const groups = [...groupMap.values()]
-  const isCollapsed = (provider: string): boolean => collapsed[provider] === true
+  // 默认收缩:未在 collapsed 记录里的组视为折叠(undefined → 折叠)。
+  const isCollapsed = (provider: string): boolean => collapsed[provider] === undefined ? true : collapsed[provider]
   const toggle = (provider: string): void =>
-    setCollapsed((prev) => ({ ...prev, [provider]: !prev[provider] }))
+    setCollapsed((prev) => {
+      const cur = prev[provider] === undefined ? true : prev[provider]
+      return { ...prev, [provider]: !cur }
+    })
 
   return (
     <div className={styles.root}>
