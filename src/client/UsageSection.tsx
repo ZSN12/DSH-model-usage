@@ -270,9 +270,6 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
       <div className={styles.panel}>
         <div className={styles.panelHead}>
           <h3><span className={styles.dotBlue} />Token 活动</h3>
-          <div className={styles.tools}>
-            <TimeRangePicker value={range} onChange={setRange} />
-          </div>
         </div>
 
         <div className={styles.heatWrap}>
@@ -319,6 +316,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
         <div className={styles.panelHead}>
           <h3><span className={styles.dotGreen} />用量明细</h3>
           <div className={styles.tools}>
+            <TimeRangePicker value={range} onChange={setRange} />
             <ModelSelect
               value={model}
               rows={rows}
@@ -529,6 +527,7 @@ function TimeRangePicker(props: {
     <div className={styles.dropdown} ref={rootRef}>
       <button
         type="button"
+        title="选择时间范围,作用于用量明细与热力图"
         className={styles.dropBtn + (open ? ' ' + styles.open : '')}
         onClick={() => {
           // 每次打开时用当前值初始化自定义草稿
