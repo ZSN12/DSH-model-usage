@@ -138,7 +138,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   const [report, setReport] = useState<UsageReport | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [model, setModel] = useState('')
-  const [range, setRange] = useState<TimeRange>(() => PRESETS.find((p) => p.key === '6m')!.make(Date.now()))
+  const [range, setRange] = useState<TimeRange>(() => PRESETS.find((p) => p.key === '7d')!.make(Date.now()))
   const [auto, setAuto] = useState(true)
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null)
   const [rev, setRev] = useState(0)
