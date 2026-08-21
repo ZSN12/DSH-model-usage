@@ -33,6 +33,13 @@ function trim(x: number): string {
   return (Math.round(x * 10) / 10).toString()
 }
 
+/** 格式化时间戳为 MM月DD日 HH:mm,供时间范围指示器展示。 */
+function fmtDT(ms: number | null): string {
+  if (ms == null) return '—'
+  const d = new Date(ms)
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 /** 耗时格式化:26分48秒 / 1小时5分。 */
 function fdur(ms: number | null | undefined): string {
   if (ms == null) return '—'
@@ -328,6 +335,15 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
               {auto ? <span className={styles.auto}><span className={styles.pulse} />5s 自动刷新</span> : '自动刷新关闭'}
             </button>
           </div>
+        </div>
+
+        {/* 当前时间范围指示器(便于确认所选范围是否生效) */}
+        <div className={styles.rangeInfo}>
+          当前范围:<span className={styles.rangeInfoStrong}>{range.label}</span>
+          <span className={styles.rangeInfoDim}>
+            {range.start != null ? fmtDT(range.start) : '全部时间'}
+            {range.end != null ? ' ~ ' + fmtDT(range.end) : ''}
+          </span>
         </div>
 
         {/* KPI 卡(无图标,简洁文字) */}
