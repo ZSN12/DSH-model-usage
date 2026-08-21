@@ -176,8 +176,16 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   if (!report) return <div className={styles.empty}>加载中…</div>
 
   // 顶部统计栏:全量历史;用量明细(KPI/列表):窗口内(days)。
-  const ov = report.overview
+  // 防御:老版本 host 可能尚未返回 overview(需重启 DSH),缺失时回退到
+  // summary,避免页面白屏。
   const sum = report.summary
+  const ov = report.overview ?? {
+    totalTokens: sum.totalTokens,
+    peakTokens: sum.peakTokens,
+    maxDur: sum.maxDur,
+    currentStreak: sum.currentStreak,
+    maxStreak: sum.maxStreak,
+  }
   // 先去重合并同源同名(如 workbuddy/deepseek-v4-flash ≡ deepseek-v4-flash),再分组
   const rows = mergeRows(report.rows)
   const daily = report.daily
