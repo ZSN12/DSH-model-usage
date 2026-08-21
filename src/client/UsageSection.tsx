@@ -143,6 +143,8 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null)
   const [rev, setRev] = useState(0)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  // 热力图自己的时间范围(独立于用量明细的时间选择器)。
+  const [heatZoom, setHeatZoom] = useState(182)
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -196,8 +198,8 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   const daily = report.daily
 
   // ── 热力图:7 行 × N 列(列 = 周,与 GitHub/Codex 一致) ──
-  // 热力图固定展示近 6 个月,独立于用量明细的时间选择器。
-  const heatDays = 182
+  // 热力图有自己的时间范围(heatZoom:6个月/1年),独立于用量明细的时间选择器。
+  const heatDays = heatZoom
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const weeks = Math.ceil((heatDays + today.getDay()) / 7)
   const start = new Date(today)
@@ -276,6 +278,17 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
       <div className={styles.panel}>
         <div className={styles.panelHead}>
           <h3><span className={styles.dotBlue} />Token 活动</h3>
+          <div className={styles.tools}>
+            <select
+              className={styles.sel}
+              value={heatZoom}
+              onChange={(e) => setHeatZoom(Number(e.target.value))}
+              title="热力图时间范围(不影响用量明细)"
+            >
+              <option value={182}>近 6 个月</option>
+              <option value={365}>近 1 年</option>
+            </select>
+          </div>
         </div>
 
         <div className={styles.heatWrap}>
