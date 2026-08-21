@@ -106,7 +106,7 @@ export interface TimeRange {
 
 const DAY = 86_400_000
 
-/** 预置档:全部 / 当天 / 1d / 7d / 14d / 30d / 90d / 6个月 / 1年。 */
+/** 预置档:全部 / 当天 / 1d / 7d / 14d / 30d / 6个月。 */
 const PRESETS: { key: string; label: string; make: (now: number) => TimeRange }[] = [
   { key: 'all', label: '全部', make: () => ({ start: null, end: null, label: '全部', days: 365 }) },
   {
@@ -120,9 +120,7 @@ const PRESETS: { key: string; label: string; make: (now: number) => TimeRange }[
   { key: '7d', label: '7d', make: (now) => ({ start: now - 7 * DAY, end: null, label: '近 7 天', days: 7 }) },
   { key: '14d', label: '14d', make: (now) => ({ start: now - 14 * DAY, end: null, label: '近 14 天', days: 14 }) },
   { key: '30d', label: '30d', make: (now) => ({ start: now - 30 * DAY, end: null, label: '近 30 天', days: 30 }) },
-  { key: '90d', label: '90d', make: (now) => ({ start: now - 90 * DAY, end: null, label: '近 90 天', days: 90 }) },
   { key: '6m', label: '6 个月', make: (now) => ({ start: now - 182 * DAY, end: null, label: '近 6 个月', days: 182 }) },
-  { key: '1y', label: '1 年', make: (now) => ({ start: now - 365 * DAY, end: null, label: '近 1 年', days: 365 }) },
 ]
 
 /** 判断两个时间范围是否等价(用于选中态高亮)。 */
