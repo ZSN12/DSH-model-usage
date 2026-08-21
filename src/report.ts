@@ -7,11 +7,62 @@
  * Node.js imports into the browser.
  */
 
-/** 单价表(美元 / 百万 token),按模型名关键词匹配;仅供成本估算。 */
-export const PRICE_IN: Record<string, number> = { deepseek: 1.5, 'gpt-4o': 2.5, 'gpt-4.1': 2.0, 'gpt-5': 1.25, 'gpt-5-mini': 0.25, claude: 3.0, gemini: 1.25, qwen: 0.4, glm: 0.8, kimi: 2.0, moonshot: 2.0, o1: 15.0, sonnet: 3.0, haiku: 1.0, opus: 15.0 }
-export const PRICE_OUT: Record<string, number> = { deepseek: 4.5, 'gpt-4o': 10.0, 'gpt-4.1': 8.0, 'gpt-5': 10.0, 'gpt-5-mini': 1.2, claude: 15.0, gemini: 5.0, qwen: 1.2, glm: 2.0, kimi: 8.0, moonshot: 8.0, o1: 60.0, sonnet: 15.0, haiku: 5.0, opus: 75.0 }
-export const DEF_IN = 1.0
-export const DEF_OUT = 5.0
+/**
+ * 单价表(人民币 ¥ / 百万 token),按模型名关键词匹配;仅供成本估算。
+ *
+ * 汇率:2026-08-19 央行中间价 1 USD = ¥6.7854。
+ * 官方来源:
+ * - DeepSeek 官方调价(2026-08-17 生效,峰谷计价,高峰 9:00-14:00):V4-Flash
+ *   空闲 输入¥1.5/缓存命中¥0.05/输出¥4.5,高峰翻倍;V4-Pro 空闲
+ *   输入¥4.5/缓存命中¥0.15/输出¥13.5,高峰翻倍。
+ * - Kimi 官方定价(K2.7 Code):输入¥6.5/缓存命中¥1.3/输出¥27。
+ * - grok-4.5(mai 中转 standard 档):输入 $0.6/输出 $1.8/缓存读取 $0.15
+ *   × 6.7854 ≈ ¥4.07/¥12.21/¥1.02。
+ */
+export interface ModelPrice {
+  /** 输入(缓存未命中),¥/M tokens */
+  in: number
+  /** 输出,¥/M tokens */
+  out: number
+  /** 缓存读取(命中),¥/M tokens */
+  cache: number
+  /** 高峰时段价格(DeepSeek 峰谷计价;未提供则与 `in/out/cache` 相同) */
+  peak?: Partial<ModelPrice>
+}
+
+export const PRICES: Record<string, ModelPrice> = {
+  // DeepSeek V4 系列(2026-08-17 官方峰谷调价)
+  'deepseek-v4-pro': { in: 4.5, out: 13.5, cache: 0.15, peak: { in: 9.0, out: 27.0, cache: 0.30 } },
+  'deepseek-v4': { in: 1.5, out: 4.5, cache: 0.05, peak: { in: 3.0, out: 9.0, cache: 0.10 } },
+  deepseek: { in: 1.5, out: 4.5, cache: 0.05, peak: { in: 3.0, out: 9.0, cache: 0.10 } },
+  // Kimi 官方(2026-08 定价表)
+  'k3': { in: 20.0, out: 100.0, cache: 2.0 },
+  'kimi-k2.7': { in: 6.5, out: 27.0, cache: 1.3 },
+  moonshot: { in: 6.5, out: 27.0, cache: 1.3 },
+  kimi: { in: 6.5, out: 27.0, cache: 1.3 },
+  // grok(mai 中转 standard 档,$×6.7854)
+  grok: { in: 4.07, out: 12.21, cache: 1.02 },
+  // 其余模型沿用人民币换算后的通用档(汇率 6.7854)
+  'gpt-4o': { in: 16.96, out: 67.85, cache: 8.48 },
+  'gpt-4.1': { in: 13.57, out: 54.28, cache: 6.79 },
+  'gpt-5-mini': { in: 1.7, out: 8.14, cache: 0.85 },
+  'gpt-5': { in: 8.48, out: 67.85, cache: 4.24 },
+  claude: { in: 20.36, out: 101.78, cache: 10.18 },
+  sonnet: { in: 20.36, out: 101.78, cache: 10.18 },
+  haiku: { in: 6.79, out: 33.93, cache: 3.39 },
+  opus: { in: 101.78, out: 508.91, cache: 50.89 },
+  gemini: { in: 8.48, out: 33.93, cache: 4.24 },
+  qwen: { in: 2.71, out: 8.14, cache: 1.36 },
+  glm: { in: 5.43, out: 13.57, cache: 2.71 },
+  o1: { in: 101.78, out: 407.12, cache: 50.89 },
+}
+export const DEF_PRICE: ModelPrice = { in: 6.79, out: 33.93, cache: 3.39 }
+
+/** DeepSeek 高峰时段(本地时间 9:00-14:00),价格翻倍。 */
+export function peakHour(date = new Date()): boolean {
+  const h = date.getHours()
+  return h >= 9 && h < 14
+}
 
 /** One recorded call. */
 export interface UsageRecord {

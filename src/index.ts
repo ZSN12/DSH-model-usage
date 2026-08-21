@@ -21,7 +21,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { StreamChunk } from '@deepseek-ai/dsh-llm'
 // Pulls the `Context.webServer` augmentation from the host webserver package.
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { DEF_IN, DEF_OUT, PRICE_IN, PRICE_OUT, type DailyMap, type ModelRow, type UsageRecord, type UsageReport } from './report.ts'
+import { DEF_PRICE, PRICES, peakHour, type DailyMap, type ModelPrice, type ModelRow, type UsageRecord, type UsageReport } from './report.ts'
 
 const STORE_DIR = process.env.DSH_HOME
   ? join(process.env.DSH_HOME, 'storages')
@@ -29,12 +29,23 @@ const STORE_DIR = process.env.DSH_HOME
 const STORE_FILE = join(STORE_DIR, 'model-usage.jsonl')
 const MAX_CALLS = 50_000
 
-function priceFor(model: string, table: Record<string, number>, def: number): number {
+/** Resolve the price entry for a model (longest key wins to keep exact matches). */
+function priceFor(model: string): ModelPrice {
   const m = String(model || '').toLowerCase()
-  for (const k of Object.keys(table)) {
-    if (m.includes(k)) return table[k] ?? def
+  let best = ''
+  for (const k of Object.keys(PRICES)) {
+    if (m.includes(k) && k.length > best.length) best = k
   }
-  return def
+  return best ? PRICES[best]! : DEF_PRICE
+}
+
+/** Effective price for one call, applying DeepSeek-style peak-hour surcharge. */
+function effectivePrice(model: string, ts: number): ModelPrice {
+  const p = priceFor(model)
+  if (!peakHour(new Date(ts))) return p
+  const peak = p.peak
+  if (peak === undefined) return p
+  return { in: peak.in ?? p.in, out: peak.out ?? p.out, cache: peak.cache ?? p.cache }
 }
 
 /** Host plugin registration. */
@@ -188,7 +199,13 @@ export function apply(ctx: Context): void {
     const peakTokens = list.reduce((m, c) => Math.max(m, c.inp + c.out + c.cr + c.cw), 0)
     const maxDur = list.reduce((m, c) => Math.max(m, c.dur), 0)
     const st = streaks(list)
-    const costUsd = list.reduce((s, c) => s + (c.inp + c.cr + c.cw) / 1_000_000 * priceFor(c.model, PRICE_IN, DEF_IN) + c.out / 1_000_000 * priceFor(c.model, PRICE_OUT, DEF_OUT), 0)
+    const costUsd = list.reduce((s, c) => {
+      const p = effectivePrice(c.model, c.ts)
+      return s
+        + (c.inp + c.cw) / 1_000_000 * p.in
+        + c.cr / 1_000_000 * p.cache
+        + c.out / 1_000_000 * p.out
+    }, 0)
     const billedIn = totals.inputTokens + totals.cacheReadTokens + totals.cacheWriteTokens
     const cacheHitRate = billedIn + totals.outputTokens > 0 ? totals.cacheReadTokens / (billedIn + totals.outputTokens) : 0
     return {

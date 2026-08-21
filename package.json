@@ -1,7 +1,7 @@
 {
   "name": "dsh-model-usage",
   "version": "0.1.0",
-  "description": "模型用量 (Model Usage) dashboard for DeepSeek Harness — per-API token/cost tracking with a GitHub-style activity heatmap and usage details in the settings page.",
+  "description": "模型用量仪表板:按 API 统计 token/费用,带 GitHub 风格活动热图",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
