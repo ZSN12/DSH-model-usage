@@ -307,6 +307,55 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* 来源分组:组头可点击收缩/展开 */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.groupHead:hover { background: var(--dsw-alias-interactive-bg-hover); border-color: var(--dsw-alias-border-l4); }
+.groupChevron {
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+.groupChevronOpen { transform: rotate(0deg); }
+.groupName { flex-shrink: 0; }
+.groupMeta {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+.groupBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .row {
   display: flex;
   align-items: center;

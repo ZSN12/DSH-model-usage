@@ -8,7 +8,7 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { UsageReport } from '../report.ts'
+import type { ModelRow, UsageReport } from '../report.ts'
 import styles from './UsageSection.module.css'
 
 export interface UsageSectionProps {
@@ -60,6 +60,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   const [auto, setAuto] = useState(true)
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null)
   const [rev, setRev] = useState(0)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -146,6 +147,22 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   }
   const hideTip = (): void => setTip(null)
 
+  // ── 按来源(provider)分组:同一来源的模型叠放在一起,可收缩/展开 ──
+  const groups: { provider: string; rows: ModelRow[]; totalTokens: number; calls: number }[] = []
+  for (const r of rows) {
+    let g = groups[groups.length - 1]
+    if (!g || g.provider !== r.provider) {
+      g = { provider: r.provider, rows: [], totalTokens: 0, calls: 0 }
+      groups.push(g)
+    }
+    g.rows.push(r)
+    g.totalTokens += r.totalTokens
+    g.calls += r.calls
+  }
+  const isCollapsed = (provider: string): boolean => collapsed[provider] === true
+  const toggle = (provider: string): void =>
+    setCollapsed((prev) => ({ ...prev, [provider]: !prev[provider] }))
+
   return (
     <div className={styles.root}>
       {/* ── 顶部统计栏:5 个指标横向排列 ── */}
@@ -231,7 +248,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
         <div className={styles.kpis}>
           <Kpi l="真实消耗 Tokens" v={fc(sum.totalTokens)} d="输入+输出+缓存" />
           <Kpi l="总请求数" v={sum.requests != null ? String(sum.requests) : '—'} d="所有模型调用" />
-          <Kpi l="总成本(估算)" v={sum.costUsd != null ? '$' + Number(sum.costUsd).toFixed(2) : '—'} d="按公开单价估算" />
+          <Kpi l="总成本(估算)" v={sum.costUsd != null ? '¥' + Number(sum.costUsd).toFixed(2) : '—'} d="按官方公开价(¥/M)估算" />
           <Kpi l="缓存命中" v={fc(sum.cacheReadTokens)} d="cache read tokens" />
           <Kpi l="推理 Tokens" v={fc(sum.reasoningTokens)} d="reasoning tokens" />
         </div>
@@ -245,26 +262,49 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
           <div className={styles.rateBar}><div className={styles.rateFill} style={{ width: Math.min(100, (sum.cacheHitRate ?? 0) * 100) + '%' }} /></div>
         </div>
 
-        {/* 模型列表(无图标,纯文字) */}
+        {/* 模型列表:按来源(provider)分组,可收缩/展开 */}
         {rows.length === 0 ? (
           <div className={styles.empty}>暂无调用记录</div>
         ) : (
           <div className={styles.list}>
-            {rows.map((r) => (
-              <div key={r.provider + '/' + r.model} className={styles.row}>
-                <div className={styles.nm}>
-                  <div>{r.model}</div>
-                  <div className={styles.pv}>{r.provider}</div>
+            {groups.map((g) => {
+              const open = !isCollapsed(g.provider)
+              return (
+                <div key={g.provider} className={styles.group}>
+                  <button
+                    type="button"
+                    className={styles.groupHead}
+                    onClick={() => toggle(g.provider)}
+                    aria-expanded={open}
+                  >
+                    <span className={styles.groupChevron + (open ? ' ' + styles.groupChevronOpen : '')}>▸</span>
+                    <span className={styles.groupName}>{g.provider}</span>
+                    <span className={styles.groupMeta}>
+                      {g.rows.length} 个模型 · 共 {fc(g.totalTokens)} · {g.calls} 次调用
+                    </span>
+                  </button>
+                  {open && (
+                    <div className={styles.groupBody}>
+                      {g.rows.map((r) => (
+                        <div key={r.provider + '/' + r.model} className={styles.row}>
+                          <div className={styles.nm}>
+                            <div>{r.model}</div>
+                            <div className={styles.pv}>{r.provider}</div>
+                          </div>
+                          <div className={styles.nums}>
+                            <div className={styles.num}><b>{fc(r.totalTokens)}</b><span>总 token</span></div>
+                            <div className={styles.num}><b>{r.calls}</b><span>调用</span></div>
+                            <div className={styles.num}><b>{fc(r.inputTokens)}</b><span>输入</span></div>
+                            <div className={styles.num}><b>{fc(r.outputTokens)}</b><span>输出</span></div>
+                            <div className={styles.num}><b>{fc(r.reasoningTokens)}</b><span>推理</span></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className={styles.nums}>
-                  <div className={styles.num}><b>{fc(r.totalTokens)}</b><span>总 token</span></div>
-                  <div className={styles.num}><b>{r.calls}</b><span>调用</span></div>
-                  <div className={styles.num}><b>{fc(r.inputTokens)}</b><span>输入</span></div>
-                  <div className={styles.num}><b>{fc(r.outputTokens)}</b><span>输出</span></div>
-                  <div className={styles.num}><b>{fc(r.reasoningTokens)}</b><span>推理</span></div>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
