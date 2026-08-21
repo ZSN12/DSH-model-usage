@@ -198,7 +198,10 @@ export function apply(ctx: Context): void {
 
     const agg = aggregate(list)
     const rows = [...agg.per.values()].sort((a, b) => b.lastAt - a.lastAt)
-    const daily = agg.daily
+    // 热力图:使用全量历史(受模型筛选影响,不受明细时间窗口影响),
+    // 使时间选择器只作用于用量明细,不改变 Token 活动热力图。
+    const heatAgg = aggregate(fullList)
+    const daily = heatAgg.daily
 
     const totals = [...agg.per.values()].reduce((acc, r) => {
       acc.calls += r.calls

@@ -191,7 +191,8 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   const daily = report.daily
 
   // ── 热力图:7 行 × N 列(列 = 周,与 GitHub/Codex 一致) ──
-  const heatDays = Math.max(7, range.days)
+  // 热力图固定展示近 6 个月,独立于用量明细的时间选择器。
+  const heatDays = 182
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const weeks = Math.ceil((heatDays + today.getDay()) / 7)
   const start = new Date(today)
@@ -527,7 +528,7 @@ function TimeRangePicker(props: {
     <div className={styles.dropdown} ref={rootRef}>
       <button
         type="button"
-        title="选择时间范围,作用于用量明细与热力图"
+        title="选择时间范围,仅作用于用量明细(展示该时间段内使用的模型与用量)"
         className={styles.dropBtn + (open ? ' ' + styles.open : '')}
         onClick={() => {
           // 每次打开时用当前值初始化自定义草稿
