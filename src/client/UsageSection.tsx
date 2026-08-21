@@ -52,6 +52,41 @@ function lvl(v: number, max: number): number {
   return r > 0.75 ? 4 : r > 0.5 ? 3 : r > 0.25 ? 2 : 1
 }
 
+/**
+ * 合并"同名同源"的模型行:同一 provider 下、模型名去掉来源前缀后相同
+ * 的行视为同一个模型(例如 workbuddy-ocx 下的 `deepseek-v4-flash` 与
+ * `workbuddy/deepseek-v4-flash` 只是改过名),数值字段累加合并。
+ * 顺序取首次出现的位置。
+ */
+function mergeRows(rows: ModelRow[]): ModelRow[] {
+  const map = new Map<string, ModelRow>()
+  const order: string[] = []
+  for (const r of rows) {
+    const base = r.provider.split('-')[0] || r.provider
+    let model = r.model
+    if (base && model.startsWith(base + '/')) model = model.slice(base.length + 1)
+    const key = r.provider + '\u0000' + model
+    const existing = map.get(key)
+    if (!existing) {
+      order.push(key)
+      map.set(key, { ...r, model })
+    } else {
+      existing.calls += r.calls
+      existing.inputTokens += r.inputTokens
+      existing.outputTokens += r.outputTokens
+      existing.cacheReadTokens += r.cacheReadTokens
+      existing.cacheWriteTokens += r.cacheWriteTokens
+      existing.reasoningTokens += r.reasoningTokens
+      existing.totalTokens += r.totalTokens
+      existing.firstAt = Math.min(existing.firstAt, r.firstAt)
+      existing.lastAt = Math.max(existing.lastAt, r.lastAt)
+      existing.peakTokens = Math.max(existing.peakTokens, r.peakTokens)
+      existing.maxDur = Math.max(existing.maxDur, r.maxDur)
+    }
+  }
+  return order.map((k) => map.get(k)!)
+}
+
 export function UsageSection(_props: UsageSectionProps): ReactNode {
   const [report, setReport] = useState<UsageReport | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -97,7 +132,8 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   if (!report) return <div className={styles.empty}>加载中…</div>
 
   const sum = report.summary
-  const rows = report.rows
+  // 先去重合并同源同名(如 workbuddy/deepseek-v4-flash ≡ deepseek-v4-flash),再分组
+  const rows = mergeRows(report.rows)
   const daily = report.daily
 
   // ── 热力图:7 行 × N 列(列 = 周,与 GitHub/Codex 一致) ──
@@ -147,18 +183,19 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   }
   const hideTip = (): void => setTip(null)
 
-  // ── 按来源(provider)分组:同一来源的模型叠放在一起,可收缩/展开 ──
-  const groups: { provider: string; rows: ModelRow[]; totalTokens: number; calls: number }[] = []
+  // ── 按来源(provider)分组:同一来源的模型全部叠放在一个组里(不分先后),可收缩/展开 ──
+  const groupMap = new Map<string, { provider: string; rows: ModelRow[]; totalTokens: number; calls: number }>()
   for (const r of rows) {
-    let g = groups[groups.length - 1]
-    if (!g || g.provider !== r.provider) {
+    let g = groupMap.get(r.provider)
+    if (!g) {
       g = { provider: r.provider, rows: [], totalTokens: 0, calls: 0 }
-      groups.push(g)
+      groupMap.set(r.provider, g)
     }
     g.rows.push(r)
     g.totalTokens += r.totalTokens
     g.calls += r.calls
   }
+  const groups = [...groupMap.values()]
   const isCollapsed = (provider: string): boolean => collapsed[provider] === true
   const toggle = (provider: string): void =>
     setCollapsed((prev) => ({ ...prev, [provider]: !prev[provider] }))
