@@ -344,6 +344,9 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
             {range.start != null ? fmtDT(range.start) : '全部时间'}
             {range.end != null ? ' ~ ' + fmtDT(range.end) : ''}
           </span>
+          <span className={styles.rangeInfoDim}>
+            {report.debug?.version ? '· host ' + report.debug.version : ''}
+          </span>
         </div>
 
         {/* KPI 卡(无图标,简洁文字) */}

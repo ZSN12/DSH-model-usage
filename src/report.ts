@@ -134,5 +134,5 @@ export interface UsageReport {
     cacheReadTokens: number
     reasoningTokens: number
   }
-  debug: { appliedAt: number; streamHits: number; usageHits: number; recorded: number; heap: number }
+  debug: { appliedAt: number; streamHits: number; usageHits: number; recorded: number; heap: number; version: string }
 }

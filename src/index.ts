@@ -122,6 +122,9 @@ export function apply(ctx: Context): void {
     persist(record)
   })
 
+  /** 供前端界面显示,用于确认运行的 host 是否已更新(见 debug.version)。 */
+  const HOST_VERSION = '2026-08-21-filter-v1'
+
   function aggregate(list: readonly UsageRecord[]): { per: Map<string, ModelRow>; daily: DailyMap } {
     const per = new Map<string, ModelRow>()
     const daily: DailyMap = {}
@@ -261,7 +264,7 @@ export function apply(ctx: Context): void {
         cacheReadTokens: totals.cacheReadTokens,
         reasoningTokens: totals.reasoningTokens,
       },
-      debug: { appliedAt, streamHits, usageHits, recorded, heap: calls.length },
+      debug: { appliedAt, streamHits, usageHits, recorded, heap: calls.length, version: HOST_VERSION },
     }
   }
 
