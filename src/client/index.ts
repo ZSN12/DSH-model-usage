@@ -7,7 +7,7 @@
  * (`/api/model-usage`, `/api/model-usage/reset`).
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { SettingsSectionOwnerProps } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { UsageSection } from './UsageSection.tsx'
 

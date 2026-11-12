@@ -129,7 +129,10 @@ export interface UsageReport {
     currentStreak: number
     maxStreak: number
     requests: number
-    costUsd: number
+    /** Estimated cost in CNY, based on the bundled per-million-token table. */
+    costCny: number
+    /** @deprecated Retained for clients shipped before the CNY field was named correctly. */
+    costUsd?: number
     cacheHitRate: number
     cacheReadTokens: number
     reasoningTokens: number

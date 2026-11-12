@@ -4,10 +4,7 @@
  *
  * The client bundle replicates the official DSH client-bundle preset
  * (packages/client/tsdown.client.ts):
- * - externals resolve through the loader module table at runtime (plugin is
- *   injected after @deepseek-ai/dsh-client-runtime / -ui-settings / -ui-slots,
- *   which come from the platform), so `react`, cordis and the DSH client
- *   kits are all external,
+ * - React resolves through the loader module table at runtime,
  * - everything else is inlined into the bundle,
  * - the purity gate rejects any other @deepseek-ai value import: cross-plugin
  *   collaboration goes through cordis services, never value imports,
@@ -37,15 +34,6 @@ const NODE_BUILTINS = new Set([
 const CLIENT_EXTERNALS = [
   'react',
   'react/jsx-runtime',
-  'react-dom',
-  'react-dom/client',
-  'cordis',
-  '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-web-react',
-  '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-schema-form',
-  '@deepseek-ai/dsh-client-runtime/client',
-  '@deepseek-ai/dsh-client-ui-settings/client',
 ]
 
 /** Browser-safe contract surfaces a client bundle may inline. */

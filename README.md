@@ -24,7 +24,7 @@
 
 ## 📦 安装
 
-要求：DeepSeek Harness（含 web profile）与 pnpm。
+要求：DeepSeek Harness（含 web profile，支持 `0.1.1-rc.2` 与 `0.2.2-rc.2` 版本线）与 pnpm。当前插件按官方上游 `0.2.2-rc.2` 主线适配；旧版 `0.1.0-rc.6` 依赖声明已更新。
 
 ### 方式一：源码构建 + 挂载（推荐）
 
@@ -37,7 +37,7 @@ pnpm build            # 产出 lib/index.js + lib/client.js + lib/types
 pnpm pack             # 产出 tarball
 
 # 2. 装进 web profile
-dsh plugin --profile web add file:dsh-model-usage-0.1.0.tgz
+dsh plugin --profile web add file:dsh-model-usage-0.2.0.tgz
 ```
 
 ### 方式二：profile 直挂（开发用）
@@ -56,7 +56,7 @@ dsh plugin --profile web add file:dsh-model-usage-0.1.0.tgz
 
 | 半 | 文件 | 职责 |
 |---|---|---|
-| Host | `src/index.ts` | 包装 `llm/stream` waterfall 采集每次调用的 usage chunk；持久化到 jsonl；注册 HTTP 路由 |
+| Host | `src/index.ts` | 包装 `llm/stream` waterfall 采集每次调用的 usage chunk；限制本地历史文件体积；通过 DSH connection trust fence 保护 HTTP 路由 |
 | Host | `src/report.ts` | 共享的 wire contracts（记录结构 / 聚合行 / 单价表） |
 | Client | `src/client/index.ts` | 注册 `settings.section` 分区（模型用量, order 12） |
 | Client | `src/client/UsageSection.tsx` | 仪表盘 UI：统计栏 / 热力图 / KPI / 命中率 / 模型列表 |
@@ -75,24 +75,24 @@ ctx.on('llm/stream', async function* (options, next) {
 })
 ```
 
-记录字段：`{ ts, provider, model, inp, out, cr, cw, rsn, dur }`。启动时回放 jsonl（上限 50,000 条），内存聚合出报告。
+记录字段：`{ ts, provider, model, inp, out, cr, cw, rsn, dur }`。启动时从 jsonl 读取最新的 50,000 条有效记录；文件会定期压缩到同一保留窗口，避免无限增长。
 
 ### HTTP 端点
 
 | 端点 | 说明 |
 |---|---|
 | `GET /api/model-usage?days=&model=` | 聚合报告 JSON（rows / totals / daily / summary / debug） |
-| `POST /api/model-usage/reset` | 清空记录与 jsonl（⚠️ 无鉴权，仅限本机使用） |
+| `POST /api/model-usage/reset` | 清空记录与 jsonl；需要通过 DSH 的 Host/Origin 与登录校验 |
 
 ## 💰 成本估算说明
 
-KPI 卡里的「总成本(估算)」按 `src/report.ts` 内嵌的**公开单价表**（美元/百万 token）关键词匹配计算，**不是官方账单**。各模型价格会变动，如有偏差请自行更新单价表。
+KPI 卡里的「总成本(估算)」按 `src/report.ts` 内嵌的**公开单价表**（人民币/百万 token）关键词匹配计算，**不是官方账单**。各模型价格会变动，如有偏差请自行更新单价表。报告新增了语义正确的 `costCny` 字段，并暂时保留旧 `costUsd` wire key 供未刷新的旧版客户端读取。
 
 ## 🔒 隐私与数据
 
-- 所有用量数据仅写入本机 `~/.dsh/storages/model-usage.jsonl`（纯本地，无任何上传）
+- 所有用量数据仅写入本机 `~/.dsh/storages/model-usage.jsonl`（纯本地，无任何上传；文件按 `0600` 权限创建并收紧）
 - 单价表与代码均为静态数据，不读取 API key、聊天内容或会话内容
-- `MAX_CALLS = 50_000` 内存上限，超出后裁剪最旧记录（磁盘文件仍 append，重启回放时截断）
+- `MAX_CALLS = 50_000` 内存与磁盘保留上限；启动时跳过无效行并保留最新记录，运行中每多出 5,000 条会压缩旧数据
 
 ## 🧑‍💻 开发
 

@@ -1,6 +1,6 @@
 {
   "name": "dsh-model-usage",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "模型用量仪表板:按 API 统计 token/费用,带 GitHub 风格活动热图",
   "type": "module",
   "main": "lib/index.js",
@@ -34,26 +34,25 @@
     "prepublishOnly": "pnpm build"
   },
   "license": "MIT",
+  "engines": {
+    "dsh": "^0.1.1-rc.2 || ^0.2.2-rc.2"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
-    "cordis": "^4.0.0-rc.7",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.1-rc.2 || ^0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.1-rc.2 || ^0.2.2-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.1-rc.2 || ^0.2.2-rc.2",
+    "@deepseek-ai/dsh-llm": "^0.1.1-rc.2 || ^0.2.2-rc.2",
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-client-ui-settings": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-llm": "0.1.1-rc.2",
     "@types/node": "^24.0.0",
     "@types/react": "~18.3.1",
-    "cordis": "^4.0.0-rc.7",
     "lightningcss": "^1.32.0",
     "react": "^18.2.0",
     "tsdown": "^0.22.2",
@@ -65,9 +64,7 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-slots"
+        "@deepseek-ai/dsh-client-ui-settings"
       ],
       "platform": "web"
     }

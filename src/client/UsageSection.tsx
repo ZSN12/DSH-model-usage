@@ -186,6 +186,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
   // 防御:老版本 host 可能尚未返回 overview(需重启 DSH),缺失时回退到
   // summary,避免页面白屏。
   const sum = report.summary
+  const estimatedCostCny = sum.costCny ?? sum.costUsd
   const ov = report.overview ?? {
     totalTokens: sum.totalTokens,
     peakTokens: sum.peakTokens,
@@ -369,7 +370,7 @@ export function UsageSection(_props: UsageSectionProps): ReactNode {
         <div className={styles.kpis}>
           <Kpi l="真实消耗 Tokens" v={fc(sum.totalTokens)} d="输入+输出+缓存" />
           <Kpi l="总请求数" v={sum.requests != null ? String(sum.requests) : '—'} d="所有模型调用" />
-          <Kpi l="总成本(估算)" v={sum.costUsd != null ? '¥' + Number(sum.costUsd).toFixed(2) : '—'} d="按官方公开价(¥/M)估算" />
+          <Kpi l="总成本(估算)" v={estimatedCostCny != null ? '¥' + Number(estimatedCostCny).toFixed(2) : '—'} d="按公开单价(¥/M)估算" />
           <Kpi l="缓存命中" v={fc(sum.cacheReadTokens)} d="cache read tokens" />
           <Kpi l="推理 Tokens" v={fc(sum.reasoningTokens)} d="reasoning tokens" />
         </div>

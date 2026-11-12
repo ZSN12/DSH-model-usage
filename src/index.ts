@@ -2,20 +2,18 @@
  * 模型用量 (Model Usage) — Host half.
  *
  * Wraps the `llm/stream` waterfall to collect per-call token usage, persists
- * every completed call to `~/.dsh/storages/model-usage.jsonl` (append-only,
- * replayed on boot so statistics survive restarts), and serves aggregates to
+ * every completed call to `~/.dsh/storages/model-usage.jsonl` (rolling
+ * 50,000-call history, replayed on boot so statistics survive restarts), and serves aggregates to
  * the browser half over two HTTP endpoints registered on the webServer
  * service (`/api/model-usage`, `/api/model-usage/reset`).
  *
- * This is a composition (static) plugin: `apply(ctx)` receives the real
- * Cordis context. Services are reached through `ctx.inject([...], cb)` —
- * a synchronous `ctx.get()` at apply time is undefined until the service
- * activates — and stream events through `ctx.on('llm/stream', ...)`.
+ * The Host routes require the current web connection trust fence; route and
+ * stream registrations are disposed with this plugin's Cordis fiber.
  */
 
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { StreamChunk } from '@deepseek-ai/dsh-llm'
@@ -28,6 +26,29 @@ const STORE_DIR = process.env.DSH_HOME
   : join(homedir(), '.dsh', 'storages')
 const STORE_FILE = join(STORE_DIR, 'model-usage.jsonl')
 const MAX_CALLS = 50_000
+const COMPACT_AFTER = 5_000
+
+/** Services this Host half needs before it can register protected routes. */
+export const inject = ['webServer', 'connection']
+
+interface ConnectionTrust {
+  requestRejection(request: { readonly headers: IncomingMessage['headers'] }): 401 | 403 | undefined
+}
+
+/** The web connection service owns the Host/Origin fence and login-token check. */
+function connectionOf(ctx: Context): ConnectionTrust {
+  return Reflect.get(ctx, 'connection') as ConnectionTrust
+}
+
+function isUsageRecord(value: unknown): value is UsageRecord {
+  if (typeof value !== 'object' || value === null) return false
+  const record = value as Partial<UsageRecord>
+  return Number.isSafeInteger(record.ts) && record.ts! > 0
+    && typeof record.provider === 'string'
+    && typeof record.model === 'string'
+    && [record.inp, record.out, record.cr, record.cw, record.rsn, record.dur]
+      .every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0)
+}
 
 /** Resolve the price entry for a model (longest key wins to keep exact matches). */
 function priceFor(model: string): ModelPrice {
@@ -55,20 +76,49 @@ export function apply(ctx: Context): void {
   let streamHits = 0
   let usageHits = 0
   let recorded = 0
+  let persistedRecords = 0
+
+  function rewriteStore(): void {
+    mkdirSync(STORE_DIR, { recursive: true, mode: 0o700 })
+    const contents = calls.length ? calls.map((record) => JSON.stringify(record)).join('\n') + '\n' : ''
+    writeFileSync(STORE_FILE, contents, { encoding: 'utf8', mode: 0o600 })
+    chmodSync(STORE_FILE, 0o600)
+    persistedRecords = calls.length
+  }
 
   function loadPersisted(): void {
     try {
       if (!existsSync(STORE_FILE)) return
+      chmodSync(STORE_FILE, 0o600)
       const raw = readFileSync(STORE_FILE, 'utf8')
+      const latest: UsageRecord[] = []
+      let first = 0
+      let validRecords = 0
+      let malformedRecords = false
       for (const line of raw.split('\n')) {
         if (!line.trim()) continue
         try {
-          calls.push(JSON.parse(line) as UsageRecord)
+          const value: unknown = JSON.parse(line)
+          if (!isUsageRecord(value)) {
+            malformedRecords = true
+            continue
+          }
+          validRecords += 1
+          if (latest.length < MAX_CALLS) latest.push(value)
+          else {
+            latest[first] = value
+            first = (first + 1) % MAX_CALLS
+          }
         } catch {
           // skip malformed line
+          malformedRecords = true
         }
-        if (calls.length >= MAX_CALLS) break
       }
+      calls.push(...(validRecords > MAX_CALLS ? [...latest.slice(first), ...latest.slice(0, first)] : latest))
+      persistedRecords = validRecords
+      // Keep the latest window, discard corrupt rows, and prevent the JSONL
+      // file from growing beyond the same retention policy as memory.
+      if (validRecords > MAX_CALLS || malformedRecords) rewriteStore()
     } catch (error) {
       console.error(`[model-usage] failed to read ${STORE_FILE}: ${String(error)}`)
     }
@@ -76,8 +126,10 @@ export function apply(ctx: Context): void {
 
   function persist(record: UsageRecord): void {
     try {
-      mkdirSync(STORE_DIR, { recursive: true })
-      writeFileSync(STORE_FILE, JSON.stringify(record) + '\n', { flag: 'a' })
+      mkdirSync(STORE_DIR, { recursive: true, mode: 0o700 })
+      appendFileSync(STORE_FILE, JSON.stringify(record) + '\n', { encoding: 'utf8', mode: 0o600 })
+      persistedRecords += 1
+      if (persistedRecords > MAX_CALLS + COMPACT_AFTER) rewriteStore()
     } catch (error) {
       console.error(`[model-usage] failed to append ${STORE_FILE}: ${String(error)}`)
     }
@@ -123,7 +175,7 @@ export function apply(ctx: Context): void {
   })
 
   /** 供前端界面显示,用于确认运行的 host 是否已更新(见 debug.version)。 */
-  const HOST_VERSION = '2026-08-21-filter-v1'
+  const HOST_VERSION = '2026-11-12-dsh-0.2-v1'
 
   function aggregate(list: readonly UsageRecord[]): { per: Map<string, ModelRow>; daily: DailyMap } {
     const per = new Map<string, ModelRow>()
@@ -219,7 +271,7 @@ export function apply(ctx: Context): void {
     const peakTokens = list.reduce((m, c) => Math.max(m, c.inp + c.out + c.cr + c.cw), 0)
     const maxDur = list.reduce((m, c) => Math.max(m, c.dur), 0)
     const st = streaks(list)
-    const costUsd = list.reduce((s, c) => {
+    const costCny = list.reduce((s, c) => {
       const p = effectivePrice(c.model, c.ts)
       return s
         + (c.inp + c.cw) / 1_000_000 * p.in
@@ -259,7 +311,9 @@ export function apply(ctx: Context): void {
         currentStreak: st.currentStreak,
         maxStreak: st.maxStreak,
         requests: list.length,
-        costUsd,
+        costCny,
+        // Keep the old wire key for clients that have not refreshed yet.
+        costUsd: costCny,
         cacheHitRate,
         cacheReadTokens: totals.cacheReadTokens,
         reasoningTokens: totals.reasoningTokens,
@@ -269,42 +323,79 @@ export function apply(ctx: Context): void {
   }
 
   // ── HTTP 端点 ──
-  // webServer activates asynchronously; ctx.inject fires the callback when
-  // the service is online (a bare ctx.get at apply time is undefined here).
-  ctx.inject(['webServer'], (webCtx) => {
-    const webServer = webCtx.webServer
-    webServer.register({
+  const connection = connectionOf(ctx)
+  const rejectUntrustedRequest = (req: IncomingMessage, res: ServerResponse): boolean => {
+    const status = connection.requestRejection(req)
+    if (status === undefined) return false
+    res.writeHead(status)
+    res.end()
+    return true
+  }
+
+  ctx.effect(() => {
+    const disposeReport = ctx.webServer.register({
       kind: 'exact',
       path: '/api/model-usage',
       handler: async (req: IncomingMessage, res: ServerResponse) => {
+        if (rejectUntrustedRequest(req, res)) return
+        if (req.method !== 'GET') {
+          res.writeHead(405, { allow: 'GET' })
+          res.end()
+          return
+        }
         try {
           const url = new URL(req.url ?? '/', 'http://x')
           const query: Record<string, string> = {}
           url.searchParams.forEach((value, key) => { query[key] = value })
           const body = JSON.stringify(buildReport(query))
-          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.writeHead(200, {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': 'no-store',
+            'x-content-type-options': 'nosniff',
+          })
           res.end(body)
         } catch (error) {
-          res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' })
-          res.end('model-usage error: ' + String(error))
+          console.error('[model-usage] report request failed', error)
+          res.writeHead(500, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ error: 'model-usage error' }))
         }
       },
     })
-    webServer.register({
+    const disposeReset = ctx.webServer.register({
       kind: 'exact',
       path: '/api/model-usage/reset',
-      handler: async (_req, res) => {
-        calls.length = 0
-        recorded = 0
+      handler: async (req, res) => {
+        if (rejectUntrustedRequest(req, res)) return
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST' })
+          res.end()
+          return
+        }
         try {
-          writeFileSync(STORE_FILE, '', 'utf8')
+          mkdirSync(STORE_DIR, { recursive: true, mode: 0o700 })
+          writeFileSync(STORE_FILE, '', { encoding: 'utf8', mode: 0o600 })
+          chmodSync(STORE_FILE, 0o600)
+          calls.length = 0
+          recorded = 0
+          persistedRecords = 0
         } catch (error) {
           console.error(`[model-usage] reset failed: ${String(error)}`)
+          res.writeHead(500, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+          res.end(JSON.stringify({ ok: false }))
+          return
         }
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+        res.writeHead(200, {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+        })
         res.end(JSON.stringify({ ok: true }))
       },
     })
     console.log('[model-usage] HTTP endpoints registered at /api/model-usage')
-  })
+    return () => {
+      disposeReset()
+      disposeReport()
+    }
+  }, 'model-usage: protected HTTP routes')
 }
